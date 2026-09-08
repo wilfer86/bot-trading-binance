@@ -1,7 +1,30 @@
 import ccxt
 import pandas as pd
 import time
+import threading
+from http.server import HTTPServer, BaseHTTPRequestHandler
 from config import API_KEY, API_SECRET, SYMBOL, TIMEFRAME, TRADE_AMOUNT, FAST_MA, SLOW_MA, TESTNET
+
+# --- SERVIDOR FANTASMA PARA RENDER ---
+class HealthCheckHandler(BaseHTTPRequestHandler):
+    def do_GET(self):
+        self.send_response(200)
+        self.send_header('Content-type', 'text/plain')
+        self.end_headers()
+        self.wfile.write(b'Bot is running!')
+    
+    def log_message(self, format, *args):
+        pass  # Silenciar logs del servidor para no ensuciar la consola
+
+def start_health_server(port=10000):
+    server = HTTPServer(('0.0.0.0', port), HealthCheckHandler)
+    print(f"🌐 Servidor de salud iniciado en puerto {port} (Solo para Render)")
+    server.serve_forever()
+
+# Iniciar el servidor en un hilo separado ANTES de iniciar el bot
+health_thread = threading.Thread(target=start_health_server, daemon=True)
+health_thread.start()
+# -------------------------------------
 
 class TradingBot:
     def __init__(self):
@@ -33,7 +56,7 @@ class TradingBot:
             btc = balance['total'].get('BTC', 0)
             return usdt, btc
         except Exception as e:
-            print(f"❌ Error obteniendo balance: {e}")
+            print(f" Error obteniendo balance: {e}")
             return 0, 0
     
     def get_ohlcv(self, limit=100):
@@ -78,7 +101,7 @@ class TradingBot:
                 # order = self.exchange.create_market_buy_order(SYMBOL, TRADE_AMOUNT)
                 
             elif signal == 'SELL':
-                print(f"🔴 Orden de VENTA ejecutada")
+                print(f" Orden de VENTA ejecutada")
                 # order = self.exchange.create_market_sell_order(SYMBOL, TRADE_AMOUNT)
                 
             return True
@@ -105,9 +128,9 @@ class TradingBot:
                 slow_ma = df['slow_ma'].iloc[-1]
                 
                 print(f"💰 Precio: ${current_price:.2f}")
-                print(f"📈 Fast MA: ${fast_ma:.2f}")
+                print(f" Fast MA: ${fast_ma:.2f}")
                 print(f"📉 Slow MA: ${slow_ma:.2f}")
-                print(f"📊 Señal: {signal}")
+                print(f" Señal: {signal}")
                 
                 # Ejecutar trade si hay señal
                 if signal != 'HOLD':
